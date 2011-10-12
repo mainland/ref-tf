@@ -1,5 +1,5 @@
 name:           ref-tf
-version:        0.3
+version:        0.3.0.1
 cabal-version:  >= 1.6
 license:        BSD3
 license-file:   LICENSE
@@ -11,8 +11,8 @@ homepage:       http://www.eecs.harvard.edu/~mainland/
 category:       Control
 synopsis:       A type class for monads with references using type families.
 description:    Contains a 'MonadRef' type class that abstracts over the
-		details of manipulating references, allowing one to write code
-		that can operate in either the ST monad or the IO monad.
+                details of manipulating references, allowing one to write code
+                that can operate in either the ST monad or the IO monad.
 
 build-type:     Simple
 
@@ -26,5 +26,5 @@ library
     transformers >= 0.2 && < 0.3
 
 source-repository head
-  type:     svn
-  location: http://senseless.eecs.harvard.edu/repos/mainland-projects/ref-tf/trunk/
+  type:     git
+  location: git://github.com/mainland/ref-tf.git
