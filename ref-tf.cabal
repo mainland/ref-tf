@@ -1,10 +1,10 @@
 name:           ref-tf
-version:        0.5
+version:        0.5.0.1
 cabal-version:  >= 1.10
 license:        BSD3
 license-file:   LICENSE
 copyright:      (c) 2006-2011 Harvard University
-                (c) 2011-2018 Geoffrey Mainland
+                (c) 2011-2021 Geoffrey Mainland
 author:         Geoffrey Mainland <mainland@drexel.edu>
 maintainer:     Geoffrey Mainland <mainland@drexel.edu>
 stability:      alpha
