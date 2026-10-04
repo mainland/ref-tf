@@ -80,8 +80,8 @@ class (Monad m) => MonadRef m where
 class (MonadRef m) => MonadAtomicRef m where
     -- |Atomically mutate the contents of a reference
     atomicModifyRef :: Ref m a -> (a -> (a, b)) -> m b
-    -- |Strict version of atomicModifyRef. This forces both the value stored in
-    -- the reference as well as the value returned.
+    -- |Strict version of 'atomicModifyRef'. This forces both the value stored
+    -- in the reference and the returned value to weak head normal form.
     atomicModifyRef' :: Ref m a -> (a -> (a, b)) -> m b
     atomicModifyRef' r f = do
         b <- atomicModifyRef r
@@ -225,7 +225,7 @@ instance MonadAtomicRef IO where
 
 -- Since there's no forking, it's automatically atomic.
 instance MonadAtomicRef (ST s) where
-    atomicModifyRef r f = do
+    atomicModifyRef r f  = do
       v <- readRef r
       let (a, b) = f v
       writeRef r a
@@ -234,7 +234,7 @@ instance MonadAtomicRef (ST s) where
       v <- readRef r
       let (a, b) = f v
       writeRef r $! a
-      return b
+      b `seq` return b
 
 instance MonadAtomicRef STM where
     atomicModifyRef r f = do x <- readRef r
