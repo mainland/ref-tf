@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a `MonadAtomicRef` instance for `ExceptT`. It lifts both operations and
+  preserves their lazy and strict result behavior.
 - Fix `atomicModifyRef'` in `ST` to force its returned value to weak head
   normal form, as documented, even when the caller discards that value. The
   stored value remains strict, and `atomicModifyRef` remains lazy.

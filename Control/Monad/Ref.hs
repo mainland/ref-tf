@@ -252,6 +252,12 @@ instance (Error e, MonadAtomicRef m) => MonadAtomicRef (ErrorT e m) where
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* !MIN_VERSION_transformers(0,6,0) */
 
+#if MIN_VERSION_transformers(0,4,0)
+instance MonadAtomicRef m => MonadAtomicRef (ExceptT e m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+#endif /* MIN_VERSION_transformers(0,4,0) */
+
 instance MonadAtomicRef m => MonadAtomicRef (IdentityT m) where
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
