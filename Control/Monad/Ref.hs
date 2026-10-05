@@ -42,20 +42,16 @@ import Control.Monad.Trans.Writer.Lazy as Lazy (WriterT)
 import Control.Monad.Trans.Writer.Strict as Strict (WriterT)
 import Control.Monad.Trans.Class (lift)
 import Data.IORef (IORef,
-#if MIN_VERSION_base(4,6,0)
                    atomicModifyIORef',
                    modifyIORef',
-#endif /* MIN_VERSION_base(4,6,0) */
                    atomicModifyIORef,
                    modifyIORef,
                    newIORef,
                    readIORef,
                    writeIORef)
-import Data.Monoid (Monoid)
+import Data.Kind (Type)
 import Data.STRef (STRef,
-#if MIN_VERSION_base(4,6,0)
                    modifySTRef',
-#endif /* MIN_VERSION_base(4,6,0) */
                    modifySTRef,
                    newSTRef,
                    readSTRef,
@@ -66,7 +62,7 @@ import Data.STRef (STRef,
 -- in any monad that supports reference operations.
 
 class (Monad m) => MonadRef m where
-    type Ref m :: * -> *
+    type Ref m :: Type -> Type
 
     -- |Create a new reference
     newRef    :: a -> m (Ref m a)
@@ -100,9 +96,7 @@ instance MonadRef (ST s) where
     readRef    = readSTRef
     writeRef   = writeSTRef
     modifyRef  = modifySTRef
-#if MIN_VERSION_base(4,6,0)
     modifyRef' = modifySTRef'
-#endif /* MIN_VERSION_base(4,6,0) */
 
 instance MonadRef IO where
     type Ref IO = IORef
@@ -111,9 +105,7 @@ instance MonadRef IO where
     readRef    = readIORef
     writeRef   = writeIORef
     modifyRef  = modifyIORef
-#if MIN_VERSION_base(4,6,0)
     modifyRef' = modifyIORef'
-#endif /* MIN_VERSION_base(4,6,0) */
 
 instance MonadRef STM where
     type Ref STM = TVar
@@ -229,9 +221,7 @@ instance (Monoid w, MonadRef m) => MonadRef (Strict.WriterT w m) where
 
 instance MonadAtomicRef IO where
     atomicModifyRef = atomicModifyIORef
-#if MIN_VERSION_base(4,6,0)
     atomicModifyRef' = atomicModifyIORef'
-#endif /* MIN_VERSION_base(4,6,0) */
 
 -- Since there's no forking, it's automatically atomic.
 instance MonadAtomicRef (ST s) where
