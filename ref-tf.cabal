@@ -31,6 +31,10 @@ tested-with:    GHC==8.0.2,
 
 build-type:     Simple
 
+extra-source-files:
+  README.md
+  CHANGELOG.md
+
 library
   default-language: Haskell2010
   ghc-options: -Wall
@@ -60,4 +64,4 @@ test-suite unit
 
 source-repository head
   type:     git
-  location: git://github.com/mainland/ref-tf.git
+  location: https://github.com/mainland/ref-tf.git
