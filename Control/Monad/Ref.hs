@@ -5,9 +5,9 @@
 -- |
 -- Module      :  Control.Monad.Ref
 -- Copyright   :  (c) Harvard University 2006-2011
---                (c) Geoffrey Mainland 2011-2014
+--                (c) Geoffrey Mainland 2011-2026
 -- License     :  BSD-style
--- Maintainer  :  Geoffrey Mainland <mainland@cs.drexel.edu>
+-- Maintainer  :  Geoffrey Mainland <mainland@drexel.edu>
 --
 -- Stability   :  experimental
 -- Portability :  non-portable

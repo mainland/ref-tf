@@ -15,3 +15,5 @@
   GitHub Actions, and enable library warnings.
 - Require `base >= 4.9`, matching the supported GHC 8.0+ range. Use HTTPS for
   the source repository and include release documentation in archives.
+- Use the current maintainer address in the module header and link the package
+  homepage.

@@ -4,10 +4,11 @@ cabal-version:  >= 1.10
 license:        BSD3
 license-file:   LICENSE
 copyright:      (c) 2006-2011 Harvard University
-                (c) 2011-2021 Geoffrey Mainland
+                (c) 2011-2026 Geoffrey Mainland
 author:         Geoffrey Mainland <mainland@drexel.edu>
 maintainer:     Geoffrey Mainland <mainland@drexel.edu>
 stability:      alpha
+homepage:       https://github.com/mainland/ref-tf
 bug-reports:    https://github.com/mainland/ref-tf/issues
 category:       Control
 synopsis:       A type class for monads with references using type families.
