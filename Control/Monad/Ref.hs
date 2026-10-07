@@ -77,6 +77,14 @@ class (Monad m) => MonadRef m where
     modifyRef' :: Ref m a -> (a -> a) -> m ()
     modifyRef' r f = readRef r >>= \x -> let x' = f x in x' `seq` writeRef r x'
 
+-- |The 'MonadAtomicRef' type class extends 'MonadRef' with atomic
+-- modification. Concurrent updates to a reference cannot interleave between
+-- reading its old value and writing the new one.
+--
+-- Updates in 'ST' are atomic only because an 'ST' computation runs in a single
+-- thread. Threads that share an @'STRef' 'Control.Monad.ST.RealWorld'@ through
+-- 'Control.Monad.ST.stToIO' can interleave their updates and lose some of
+-- them. Share an 'IORef' among threads instead.
 class (MonadRef m) => MonadAtomicRef m where
     -- |Atomically mutate the contents of a reference
     atomicModifyRef :: Ref m a -> (a -> (a, b)) -> m b
@@ -223,7 +231,9 @@ instance MonadAtomicRef IO where
     atomicModifyRef = atomicModifyIORef
     atomicModifyRef' = atomicModifyIORef'
 
--- Since there's no forking, it's automatically atomic.
+-- An ST computation cannot fork, so no other thread can write the reference
+-- between the read and the write. This does not hold for an STRef RealWorld
+-- that threads share through stToIO.
 instance MonadAtomicRef (ST s) where
     atomicModifyRef r f  = do
       v <- readRef r
