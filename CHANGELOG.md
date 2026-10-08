@@ -13,9 +13,10 @@
 - Use `Data.Kind.Type` instead of `*` to avoid kind notation warnings.
 - Drop support for GHC versions before 8.0. Test GHC 8.0.2 through 9.14.1 in
   GitHub Actions, and enable library warnings.
-- Require `base >= 4.9` and `transformers >= 0.5`, matching the supported GHC
-  8.0+ range. Use HTTPS for the source repository and include release
-  documentation in archives.
+- Require `base >= 4.9`, `transformers >= 0.5`, and `stm >= 2.3`, matching the
+  supported GHC 8.0+ range. Use HTTPS for the source repository and include
+  release documentation in archives.
+- Implement `TVar` updates with `modifyTVar` and `modifyTVar'`.
 - Document `MonadAtomicRef`, including that updates in `ST` are not atomic
   across threads that share an `STRef` through `stToIO`. Use the current
   maintainer address in the module header and link the package homepage.

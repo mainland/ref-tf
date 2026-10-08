@@ -19,6 +19,8 @@ module Control.Monad.Ref (
 
 import Control.Concurrent.STM (STM)
 import Control.Concurrent.STM.TVar (TVar,
+                                    modifyTVar,
+                                    modifyTVar',
                                     newTVar,
                                     readTVar,
                                     writeTVar)
@@ -116,9 +118,11 @@ instance MonadRef IO where
 instance MonadRef STM where
     type Ref STM = TVar
 
-    newRef    = newTVar
-    readRef   = readTVar
-    writeRef  = writeTVar
+    newRef     = newTVar
+    readRef    = readTVar
+    writeRef   = writeTVar
+    modifyRef  = modifyTVar
+    modifyRef' = modifyTVar'
 
 instance MonadRef m => MonadRef (ContT r m) where
     type Ref (ContT r m) = Ref m

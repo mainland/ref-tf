@@ -45,7 +45,7 @@ library
 
   build-depends:
     base         >= 4.9 && < 5,
-    stm          >= 2.1 && < 2.6,
+    stm          >= 2.3 && < 2.6,
     transformers >= 0.5 && < 0.7
 
 test-suite unit
@@ -58,7 +58,7 @@ test-suite unit
   build-depends:
     base         >= 4.9  && < 5,
     ref-tf,
-    stm          >= 2.1  && < 2.6,
+    stm          >= 2.3  && < 2.6,
     tasty        >= 1.4  && < 1.6,
     tasty-hunit  >= 0.10 && < 0.11,
     transformers >= 0.5  && < 0.7

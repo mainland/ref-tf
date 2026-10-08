@@ -10,7 +10,7 @@ import           Control.Monad.ST           (runST, stToIO)
 import           Control.Monad.Trans.Except (runExceptT)
 import           Control.Monad.Trans.Reader (runReaderT)
 import           Data.List                  (isInfixOf)
-import           Test.Tasty                 (defaultMain, testGroup)
+import           Test.Tasty                 (TestTree, defaultMain, testGroup)
 import           Test.Tasty.HUnit           (Assertion, assertBool,
                                              assertFailure, testCase, (@?=))
 
@@ -34,6 +34,7 @@ main = defaultMain $ testGroup "References"
                 return ()) :: IO (Either String ())
             return ()
     , testCase "STM updates" $ atomically updates >>= (@?= updated)
+    , strictness "STM" atomically
     , testCase "strict ST update forces stored value" $
         assertError "stored value" $ evaluate $ runST $ do
             ref <- newRef (0 :: Int)
@@ -83,6 +84,33 @@ updates = do
 -- | The result of 'updates' when every method works.
 updated :: (Int, Int, Int)
 updated = (30, 6, 10)
+
+-- | Check that the strict methods force the value they store and the value
+-- they return, and that the lazy methods force neither. The runner must run
+-- every action of the computation that it is given.
+strictness :: MonadAtomicRef m => String -> (m () -> IO ()) -> TestTree
+strictness name run = testGroup (name ++ " strictness")
+    [ testCase "modifyRef' forces the stored value" $
+        assertError "stored value" $ run $ do
+            ref <- newRef (0 :: Int)
+            modifyRef' ref (\_ -> error "stored value")
+    , testCase "atomicModifyRef' forces the stored value" $
+        assertError "stored value" $ run $ do
+            ref <- newRef (0 :: Int)
+            atomicModifyRef' ref (\_ -> (error "stored value", ()))
+    , testCase "atomicModifyRef' forces the returned value" $
+        assertError "returned value" $ run $ do
+            ref <- newRef (0 :: Int)
+            _ <- atomicModifyRef' ref
+                (\x -> (x + 1, error "returned value" :: Int))
+            return ()
+    , testCase "modifyRef and atomicModifyRef force neither value" $ run $ do
+        ref <- newRef (0 :: Int)
+        modifyRef ref (\_ -> error "stored value")
+        _ <- atomicModifyRef ref
+            (\_ -> (error "stored value", error "returned value" :: Int))
+        return ()
+    ]
 
 assertError :: String -> IO () -> Assertion
 assertError message action = do
