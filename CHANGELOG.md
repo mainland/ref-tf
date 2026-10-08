@@ -4,12 +4,20 @@
 
 - Add a `MonadAtomicRef` instance for `ExceptT`. It lifts both operations and
   preserves their lazy and strict result behavior.
+- Add `MonadRef` and `MonadAtomicRef` instances for lazy and strict `RWST` and
+  lazy `ST`, for `AccumT` and `SelectT` with `transformers` 0.5.3 or later, and
+  for the CPS `WriterT` and `RWST` with `transformers` 0.5.6 or later.
+- A package that defines its own instance of either class for one of these
+  types, or its own `MonadAtomicRef` instance for `ExceptT`, now gets a
+  duplicate instance error and must remove that instance.
 - Fix `atomicModifyRef'` in `ST` to force its returned value to weak head
   normal form, as documented, even when the caller discards that value. The
   stored value remains strict, and `atomicModifyRef` remains lazy.
 - Add regression tests for reference updates in `ST`, `IO`, and `STM`, for
   strict result evaluation through `ReaderT`, and for a strict `ST` update
   whose function throws, which must leave the old value in the reference.
+  Test every method in each instance added here, and that the strict methods
+  force their values in `STM`, in lazy `ST`, and in each new transformer.
 - Use `Data.Kind.Type` instead of `*` to avoid kind notation warnings.
 - Drop support for GHC versions before 8.0. Test GHC 8.0.2 through 9.14.1 in
   GitHub Actions, and enable library warnings.

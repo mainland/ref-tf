@@ -2,17 +2,33 @@
 
 module Main (main) where
 
-import           Control.Concurrent.STM     (atomically)
-import           Control.Exception          (ErrorCall, displayException,
-                                             evaluate, try)
+import           Control.Concurrent.STM         (atomically)
+import           Control.Exception              (ErrorCall, displayException,
+                                                 evaluate, try)
 import           Control.Monad.Ref
-import           Control.Monad.ST           (runST, stToIO)
-import           Control.Monad.Trans.Except (runExceptT)
-import           Control.Monad.Trans.Reader (runReaderT)
-import           Data.List                  (isInfixOf)
-import           Test.Tasty                 (TestTree, defaultMain, testGroup)
-import           Test.Tasty.HUnit           (Assertion, assertBool,
-                                             assertFailure, testCase, (@?=))
+import           Control.Monad.ST               (runST, stToIO)
+import qualified Control.Monad.ST.Lazy          as LazyST
+#if MIN_VERSION_transformers(0,5,3)
+import           Control.Monad.Trans.Accum      (AccumT, runAccumT)
+#endif
+import           Control.Monad.Trans.Except     (runExceptT)
+import           Control.Monad.Trans.Reader     (runReaderT)
+#if MIN_VERSION_transformers(0,5,6)
+import qualified Control.Monad.Trans.RWS.CPS    as CPSRWS
+#endif
+import qualified Control.Monad.Trans.RWS.Lazy   as LazyRWS
+import qualified Control.Monad.Trans.RWS.Strict as StrictRWS
+#if MIN_VERSION_transformers(0,5,3)
+import           Control.Monad.Trans.Select     (SelectT, runSelectT)
+#endif
+#if MIN_VERSION_transformers(0,5,6)
+import qualified Control.Monad.Trans.Writer.CPS as CPSWriter
+#endif
+import           Data.List                      (isInfixOf)
+import           Test.Tasty                     (TestTree, defaultMain,
+                                                 testGroup)
+import           Test.Tasty.HUnit               (Assertion, assertBool,
+                                                 assertFailure, testCase, (@?=))
 
 main :: IO ()
 main = defaultMain $ testGroup "References"
@@ -35,6 +51,24 @@ main = defaultMain $ testGroup "References"
             return ()
     , testCase "STM updates" $ atomically updates >>= (@?= updated)
     , strictness "STM" atomically
+    , testCase "lazy ST updates" $ LazyST.runST updates @?= updated
+    , strictness "lazy ST" (stToIO . LazyST.lazyToStrictST)
+    , testCase "lazy RWST updates" $ runLazyRWST updates >>= (@?= updated)
+    , strictness "lazy RWST" runLazyRWST
+    , testCase "strict RWST updates" $ runStrictRWST updates >>= (@?= updated)
+    , strictness "strict RWST" runStrictRWST
+#if MIN_VERSION_transformers(0,5,3)
+    , testCase "AccumT updates" $ runAccum updates >>= (@?= updated)
+    , strictness "AccumT" runAccum
+    , testCase "SelectT updates" $ runSelect updates >>= (@?= updated)
+    , strictness "SelectT" runSelect
+#endif
+#if MIN_VERSION_transformers(0,5,6)
+    , testCase "CPS WriterT updates" $ runCPSWriter updates >>= (@?= updated)
+    , strictness "CPS WriterT" runCPSWriter
+    , testCase "CPS RWST updates" $ runCPSRWST updates >>= (@?= updated)
+    , strictness "CPS RWST" runCPSRWST
+#endif
     , testCase "strict ST update forces stored value" $
         assertError "stored value" $ evaluate $ runST $ do
             ref <- newRef (0 :: Int)
@@ -111,6 +145,32 @@ strictness name run = testGroup (name ++ " strictness")
             (\_ -> (error "stored value", error "returned value" :: Int))
         return ()
     ]
+
+-- Run each new transformer over 'IO' with unit parameters.
+runLazyRWST :: LazyRWS.RWST () () () IO a -> IO a
+runLazyRWST m = fst3 <$> LazyRWS.runRWST m () ()
+
+runStrictRWST :: StrictRWS.RWST () () () IO a -> IO a
+runStrictRWST m = fst3 <$> StrictRWS.runRWST m () ()
+
+#if MIN_VERSION_transformers(0,5,3)
+runAccum :: AccumT () IO a -> IO a
+runAccum m = fst <$> runAccumT m ()
+
+runSelect :: SelectT () IO a -> IO a
+runSelect m = runSelectT m (\_ -> return ())
+#endif
+
+#if MIN_VERSION_transformers(0,5,6)
+runCPSWriter :: CPSWriter.WriterT () IO a -> IO a
+runCPSWriter m = fst <$> CPSWriter.runWriterT m
+
+runCPSRWST :: CPSRWS.RWST () () () IO a -> IO a
+runCPSRWST m = fst3 <$> CPSRWS.runRWST m () ()
+#endif
+
+fst3 :: (a, b, c) -> a
+fst3 (a, _, _) = a
 
 assertError :: String -> IO () -> Assertion
 assertError message action = do

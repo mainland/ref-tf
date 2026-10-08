@@ -25,6 +25,10 @@ import Control.Concurrent.STM.TVar (TVar,
                                     readTVar,
                                     writeTVar)
 import Control.Monad.ST (ST)
+import qualified Control.Monad.ST.Lazy as Lazy (ST)
+#if MIN_VERSION_transformers(0,5,3)
+import Control.Monad.Trans.Accum (AccumT)
+#endif /* MIN_VERSION_transformers(0,5,3) */
 import Control.Monad.Trans.Cont (ContT)
 #if !MIN_VERSION_transformers(0,6,0)
 import Control.Monad.Trans.Error (ErrorT, Error)
@@ -36,8 +40,19 @@ import Control.Monad.Trans.List (ListT)
 #endif /* !MIN_VERSION_transformers(0,6,0) */
 import Control.Monad.Trans.Maybe (MaybeT)
 import Control.Monad.Trans.Reader (ReaderT)
+#if MIN_VERSION_transformers(0,5,6)
+import qualified Control.Monad.Trans.RWS.CPS as CPS (RWST)
+#endif /* MIN_VERSION_transformers(0,5,6) */
+import Control.Monad.Trans.RWS.Lazy as Lazy (RWST)
+import Control.Monad.Trans.RWS.Strict as Strict (RWST)
+#if MIN_VERSION_transformers(0,5,3)
+import Control.Monad.Trans.Select (SelectT)
+#endif /* MIN_VERSION_transformers(0,5,3) */
 import Control.Monad.Trans.State.Lazy as Lazy (StateT)
 import Control.Monad.Trans.State.Strict as Strict (StateT)
+#if MIN_VERSION_transformers(0,5,6)
+import qualified Control.Monad.Trans.Writer.CPS as CPS (WriterT)
+#endif /* MIN_VERSION_transformers(0,5,6) */
 import Control.Monad.Trans.Writer.Lazy as Lazy (WriterT)
 import Control.Monad.Trans.Writer.Strict as Strict (WriterT)
 import Control.Monad.Trans.Class (lift)
@@ -56,6 +71,10 @@ import Data.STRef (STRef,
                    newSTRef,
                    readSTRef,
                    writeSTRef)
+import qualified Data.STRef.Lazy as Lazy (modifySTRef,
+                                          newSTRef,
+                                          readSTRef,
+                                          writeSTRef)
 
 -- |The 'MonadRef' type class abstracts over the details of manipulating
 -- references, allowing one to write code that uses references and can operate
@@ -106,6 +125,14 @@ instance MonadRef (ST s) where
     modifyRef  = modifySTRef
     modifyRef' = modifySTRef'
 
+instance MonadRef (Lazy.ST s) where
+    type Ref (Lazy.ST s) = STRef s
+
+    newRef    = Lazy.newSTRef
+    readRef   = Lazy.readSTRef
+    writeRef  = Lazy.writeSTRef
+    modifyRef = Lazy.modifySTRef
+
 instance MonadRef IO where
     type Ref IO = IORef
 
@@ -123,6 +150,17 @@ instance MonadRef STM where
     writeRef   = writeTVar
     modifyRef  = modifyTVar
     modifyRef' = modifyTVar'
+
+#if MIN_VERSION_transformers(0,5,3)
+instance (Monoid w, MonadRef m) => MonadRef (AccumT w m) where
+    type Ref (AccumT w m) = Ref m
+
+    newRef     r   = lift $ newRef     r
+    readRef    r   = lift $ readRef    r
+    writeRef   r x = lift $ writeRef   r x
+    modifyRef  r f = lift $ modifyRef  r f
+    modifyRef' r f = lift $ modifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,3) */
 
 instance MonadRef m => MonadRef (ContT r m) where
     type Ref (ContT r m) = Ref m
@@ -191,6 +229,46 @@ instance MonadRef m => MonadRef (ReaderT r m) where
     modifyRef  r f = lift $ modifyRef  r f
     modifyRef' r f = lift $ modifyRef' r f
 
+#if MIN_VERSION_transformers(0,5,6)
+instance MonadRef m => MonadRef (CPS.RWST r w s m) where
+    type Ref (CPS.RWST r w s m) = Ref m
+
+    newRef     r   = lift $ newRef     r
+    readRef    r   = lift $ readRef    r
+    writeRef   r x = lift $ writeRef   r x
+    modifyRef  r f = lift $ modifyRef  r f
+    modifyRef' r f = lift $ modifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,6) */
+
+instance (Monoid w, MonadRef m) => MonadRef (Lazy.RWST r w s m) where
+    type Ref (Lazy.RWST r w s m) = Ref m
+
+    newRef     r   = lift $ newRef     r
+    readRef    r   = lift $ readRef    r
+    writeRef   r x = lift $ writeRef   r x
+    modifyRef  r f = lift $ modifyRef  r f
+    modifyRef' r f = lift $ modifyRef' r f
+
+instance (Monoid w, MonadRef m) => MonadRef (Strict.RWST r w s m) where
+    type Ref (Strict.RWST r w s m) = Ref m
+
+    newRef     r   = lift $ newRef     r
+    readRef    r   = lift $ readRef    r
+    writeRef   r x = lift $ writeRef   r x
+    modifyRef  r f = lift $ modifyRef  r f
+    modifyRef' r f = lift $ modifyRef' r f
+
+#if MIN_VERSION_transformers(0,5,3)
+instance MonadRef m => MonadRef (SelectT r m) where
+    type Ref (SelectT r m) = Ref m
+
+    newRef     r   = lift $ newRef     r
+    readRef    r   = lift $ readRef    r
+    writeRef   r x = lift $ writeRef   r x
+    modifyRef  r f = lift $ modifyRef  r f
+    modifyRef' r f = lift $ modifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,3) */
+
 instance MonadRef m => MonadRef (Lazy.StateT s m) where
     type Ref (Lazy.StateT s m) = Ref m
 
@@ -227,6 +305,17 @@ instance (Monoid w, MonadRef m) => MonadRef (Strict.WriterT w m) where
     modifyRef  r f = lift $ modifyRef  r f
     modifyRef' r f = lift $ modifyRef' r f
 
+#if MIN_VERSION_transformers(0,5,6)
+instance MonadRef m => MonadRef (CPS.WriterT w m) where
+    type Ref (CPS.WriterT w m) = Ref m
+
+    newRef     r   = lift $ newRef     r
+    readRef    r   = lift $ readRef    r
+    writeRef   r x = lift $ writeRef   r x
+    modifyRef  r f = lift $ modifyRef  r f
+    modifyRef' r f = lift $ modifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,6) */
+
 instance MonadAtomicRef IO where
     atomicModifyRef = atomicModifyIORef
     atomicModifyRef' = atomicModifyIORef'
@@ -246,11 +335,30 @@ instance MonadAtomicRef (ST s) where
       writeRef r $! a
       b `seq` return b
 
+-- As in strict ST, these updates are atomic only within a single thread.
+instance MonadAtomicRef (Lazy.ST s) where
+    atomicModifyRef r f  = do
+      v <- readRef r
+      let (a, b) = f v
+      writeRef r a
+      return b
+    atomicModifyRef' r f = do
+      v <- readRef r
+      let (a, b) = f v
+      writeRef r $! a
+      b `seq` return b
+
 instance MonadAtomicRef STM where
     atomicModifyRef r f = do x <- readRef r
                              let (x', y) = f x
                              writeRef r x'
                              return y
+
+#if MIN_VERSION_transformers(0,5,3)
+instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (AccumT w m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,3) */
 
 instance MonadAtomicRef m => MonadAtomicRef (ContT r m) where
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
@@ -284,6 +392,26 @@ instance MonadAtomicRef m => MonadAtomicRef (ReaderT r m) where
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
+#if MIN_VERSION_transformers(0,5,6)
+instance MonadAtomicRef m => MonadAtomicRef (CPS.RWST r w s m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,6) */
+
+instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Lazy.RWST r w s m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+
+instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Strict.RWST r w s m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+
+#if MIN_VERSION_transformers(0,5,3)
+instance MonadAtomicRef m => MonadAtomicRef (SelectT r m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,3) */
+
 instance MonadAtomicRef m => MonadAtomicRef (Lazy.StateT s m) where
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
@@ -299,3 +427,9 @@ instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Lazy.WriterT w m) where
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Strict.WriterT w m) where
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
+
+#if MIN_VERSION_transformers(0,5,6)
+instance MonadAtomicRef m => MonadAtomicRef (CPS.WriterT w m) where
+    atomicModifyRef  r f = lift $ atomicModifyRef  r f
+    atomicModifyRef' r f = lift $ atomicModifyRef' r f
+#endif /* MIN_VERSION_transformers(0,5,6) */
