@@ -10,6 +10,18 @@
 - A package that defines its own instance of either class for one of these
   types, or its own `MonadAtomicRef` instance for `ExceptT`, now gets a
   duplicate instance error and must remove that instance.
+- Give `newRef`, `readRef`, `writeRef`, and `atomicModifyRef` default
+  definitions that lift through any `MonadTrans`, so a transformer's instance
+  needs only its `Ref` equation. `modifyRef`, `modifyRef'`, and
+  `atomicModifyRef'` keep their generic defaults, which do not use the
+  underlying monad's own versions. An instance should define them by lifting.
+  In particular, the default `atomicModifyRef'` over `ST` does not keep the
+  old value when forcing the new value throws.
+- An instance for a base monad must now define `newRef`, `readRef`, and
+  `writeRef`, and its `MonadAtomicRef` instance must define `atomicModifyRef`,
+  because the new defaults apply only to transformers. Earlier versions
+  compiled an instance that omitted one of these methods with a warning. Such
+  an instance no longer compiles.
 - Fix `atomicModifyRef'` in `ST` to force its returned value to weak head
   normal form, as documented, even when the caller discards that value. The
   stored value remains strict, and `atomicModifyRef` remains lazy.

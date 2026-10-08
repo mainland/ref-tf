@@ -1,4 +1,6 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies               #-}
 
 module Main (main) where
 
@@ -8,6 +10,7 @@ import           Control.Exception              (ErrorCall, displayException,
 import           Control.Monad.Ref
 import           Control.Monad.ST               (runST, stToIO)
 import qualified Control.Monad.ST.Lazy          as LazyST
+import           Control.Monad.Trans.Class      (MonadTrans (..))
 #if MIN_VERSION_transformers(0,5,3)
 import           Control.Monad.Trans.Accum      (AccumT, runAccumT)
 #endif
@@ -24,6 +27,8 @@ import           Control.Monad.Trans.Select     (SelectT, runSelectT)
 #if MIN_VERSION_transformers(0,5,6)
 import qualified Control.Monad.Trans.Writer.CPS as CPSWriter
 #endif
+import           Data.IORef                     (IORef, newIORef, readIORef,
+                                                 writeIORef)
 import           Data.List                      (isInfixOf)
 import           Test.Tasty                     (TestTree, defaultMain,
                                                  testGroup)
@@ -51,6 +56,21 @@ main = defaultMain $ testGroup "References"
             return ()
     , testCase "STM updates" $ atomically updates >>= (@?= updated)
     , strictness "STM" atomically
+    , testCase "transformer defaults lift every operation" $
+        runT updates >>= (@?= updated)
+    , testCase "transformer default forces strict atomic results" $
+        assertError "returned value" $ evaluate $ runST $ runT $ do
+            ref <- newRef (0 :: Int)
+            _ <- atomicModifyRef' ref (\x -> (x + 1, error "returned value" :: Int))
+            return ()
+    , strictness "transformer defaults" (runT :: T IO () -> IO ())
+    , testCase "base monad keeps the read-then-write modify defaults" $ do
+        result <- runPlain $ do
+            ref <- newRef (1 :: Int)
+            modifyRef ref (+ 1)
+            modifyRef' ref (* 10)
+            readRef ref
+        result @?= 20
     , testCase "lazy ST updates" $ LazyST.runST updates @?= updated
     , strictness "lazy ST" (stToIO . LazyST.lazyToStrictST)
     , testCase "lazy RWST updates" $ runLazyRWST updates >>= (@?= updated)
@@ -145,6 +165,29 @@ strictness name run = testGroup (name ++ " strictness")
             (\_ -> (error "stored value", error "returned value" :: Int))
         return ()
     ]
+
+-- | A transformer whose instances rely on the lifting defaults.
+newtype T m a = T { runT :: m a }
+    deriving (Functor, Applicative, Monad)
+
+instance MonadTrans T where
+    lift = T
+
+instance MonadRef m => MonadRef (T m) where
+    type Ref (T m) = Ref m
+
+instance MonadAtomicRef m => MonadAtomicRef (T m)
+
+-- | A base monad whose instance relies on the read-then-write modify defaults.
+newtype Plain a = Plain { runPlain :: IO a }
+    deriving (Functor, Applicative, Monad)
+
+instance MonadRef Plain where
+    type Ref Plain = IORef
+
+    newRef     = Plain . newIORef
+    readRef    = Plain . readIORef
+    writeRef r = Plain . writeIORef r
 
 -- Run each new transformer over 'IO' with unit parameters.
 runLazyRWST :: LazyRWS.RWST () () () IO a -> IO a

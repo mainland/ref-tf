@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -fno-warn-warnings-deprecations #-}
 
 -- |
@@ -73,7 +75,7 @@ import qualified Control.Monad.Trans.Writer.CPS as CPS (WriterT)
 #endif /* MIN_VERSION_transformers(0,5,6) */
 import Control.Monad.Trans.Writer.Lazy as Lazy (WriterT)
 import Control.Monad.Trans.Writer.Strict as Strict (WriterT)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans.Class (MonadTrans, lift)
 import Data.IORef (IORef,
                    atomicModifyIORef',
                    modifyIORef',
@@ -97,6 +99,23 @@ import qualified Data.STRef.Lazy as Lazy (modifySTRef,
 -- |The 'MonadRef' type class abstracts over the details of manipulating
 -- references, allowing one to write code that uses references and can operate
 -- in any monad that supports reference operations.
+--
+-- In a monad transformer over a 'MonadRef' monad, 'newRef', 'readRef', and
+-- 'writeRef' default to lifting the underlying operations, so an instance
+-- needs only its 'Ref' equation:
+--
+-- > instance MonadRef m => MonadRef (MyT m) where
+-- >     type Ref (MyT m) = Ref m
+--
+-- The defaults apply only to a monad @t n@ in which @t@ is a 'MonadTrans', @n@
+-- is a 'MonadRef' monad, and @'Ref' (t n)@ is @'Ref' n@. An instance for any
+-- other monad, such as a base monad, must define 'newRef', 'readRef', and
+-- 'writeRef'. The minimal complete definition that Haddock reports is empty
+-- only because of these defaults.
+--
+-- 'modifyRef' and 'modifyRef'' default to 'readRef' followed by 'writeRef' in
+-- every instance. Define them by lifting to use the underlying monad's own
+-- versions, as the instances in this module do.
 
 class (Monad m) => MonadRef m where
     -- |The type of references in the monad @m@. The instances for monad
@@ -106,10 +125,22 @@ class (Monad m) => MonadRef m where
 
     -- |Create a new reference
     newRef    :: a -> m (Ref m a)
+    default newRef
+        :: (m ~ t n, MonadTrans t, MonadRef n, Ref m ~ Ref n)
+        => a -> m (Ref m a)
+    newRef = lift . newRef
     -- |Read the value of a reference
     readRef   :: Ref m a -> m a
+    default readRef
+        :: (m ~ t n, MonadTrans t, MonadRef n, Ref m ~ Ref n)
+        => Ref m a -> m a
+    readRef = lift . readRef
     -- |Write a new value to a reference
     writeRef  :: Ref m a -> a -> m ()
+    default writeRef
+        :: (m ~ t n, MonadTrans t, MonadRef n, Ref m ~ Ref n)
+        => Ref m a -> a -> m ()
+    writeRef r = lift . writeRef r
     -- |Mutate the contents of a reference
     modifyRef :: Ref m a -> (a -> a) -> m ()
     modifyRef r f = readRef r >>= writeRef r . f
@@ -125,9 +156,27 @@ class (Monad m) => MonadRef m where
 -- thread. Threads that share an @'STRef' 'Control.Monad.ST.RealWorld'@ through
 -- 'Control.Monad.ST.stToIO' can interleave their updates and lose some of
 -- them. Share an 'IORef' among threads instead.
+--
+-- In a monad transformer, 'atomicModifyRef' defaults to lifting the underlying
+-- operation, which keeps it atomic. 'atomicModifyRef'' defaults to
+-- 'atomicModifyRef' with both results forced, so it is atomic wherever
+-- 'atomicModifyRef' is. An instance for any other monad, such as a base monad,
+-- must define 'atomicModifyRef'.
+--
+-- An instance that omits 'atomicModifyRef'' gets that generic definition, not
+-- the underlying monad's own version. The generic definition stores the new
+-- value before it forces it. When forcing the new value throws, the reference
+-- is left holding a value that throws whenever it is forced, whereas
+-- 'atomicModifyRef'' in 'ST' leaves the old value in the reference. Define
+-- 'atomicModifyRef'' by lifting to keep the underlying monad's behavior, as
+-- the instances in this module do.
 class (MonadRef m) => MonadAtomicRef m where
     -- |Atomically mutate the contents of a reference
     atomicModifyRef :: Ref m a -> (a -> (a, b)) -> m b
+    default atomicModifyRef
+        :: (m ~ t n, MonadTrans t, MonadAtomicRef n, Ref m ~ Ref n)
+        => Ref m a -> (a -> (a, b)) -> m b
+    atomicModifyRef r = lift . atomicModifyRef r
     -- |Strict version of 'atomicModifyRef'. This forces both the value stored
     -- in the reference and the returned value to weak head normal form.
     atomicModifyRef' :: Ref m a -> (a -> (a, b)) -> m b
