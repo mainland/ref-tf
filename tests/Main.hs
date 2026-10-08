@@ -7,9 +7,7 @@ import           Control.Exception          (ErrorCall, displayException,
                                              evaluate, try)
 import           Control.Monad.Ref
 import           Control.Monad.ST           (runST, stToIO)
-#if MIN_VERSION_transformers(0,4,0)
 import           Control.Monad.Trans.Except (runExceptT)
-#endif
 import           Control.Monad.Trans.Reader (runReaderT)
 import           Data.List                  (isInfixOf)
 import           Test.Tasty                 (defaultMain, testGroup)
@@ -20,7 +18,6 @@ main :: IO ()
 main = defaultMain $ testGroup "References"
     [ testCase "ST updates" $ runST updates @?= updated
     , testCase "IO updates" $ updates >>= (@?= updated)
-#if MIN_VERSION_transformers(0,4,0)
     , testCase "ExceptT atomic updates" $
         (runExceptT updates :: IO (Either String (Int, Int, Int))) >>= (@?= Right updated)
     , testCase "ExceptT preserves lazy atomic results" $ do
@@ -36,7 +33,6 @@ main = defaultMain $ testGroup "References"
                 _ <- atomicModifyRef' ref (\x -> (x + 1, error "returned value" :: Int))
                 return ()) :: IO (Either String ())
             return ()
-#endif
     , testCase "STM updates" $ atomically updates >>= (@?= updated)
     , testCase "strict ST update forces stored value" $
         assertError "stored value" $ evaluate $ runST $ do
