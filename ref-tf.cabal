@@ -12,9 +12,11 @@ homepage:       https://github.com/mainland/ref-tf
 bug-reports:    https://github.com/mainland/ref-tf/issues
 category:       Control
 synopsis:       A type class for monads with references using type families.
-description:    Contains a 'MonadRef' type class that abstracts over the
-                details of manipulating references, allowing one to write code
-                that can operate in either the ST monad or the IO monad.
+description:    Contains the `MonadRef` and `MonadAtomicRef` type classes,
+                which abstract over the details of manipulating references,
+                allowing one to write code that can operate in the `IO`, `ST`,
+                or `STM` monad, or in a monad transformer from the
+                @transformers@ package over any of them.
 tested-with:    GHC==8.0.2,
                 GHC==8.2.2,
                 GHC==8.4.4,

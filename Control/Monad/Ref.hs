@@ -8,9 +8,27 @@
 --                (c) Geoffrey Mainland 2011-2026
 -- License     :  BSD-style
 -- Maintainer  :  Geoffrey Mainland <mainland@drexel.edu>
---
--- Stability   :  experimental
 -- Portability :  non-portable
+--
+-- 'MonadRef' gives 'IORef' in 'IO', 'STRef' in 'ST', and 'TVar' in 'STM' one
+-- interface and lifts it through the monad transformers of the @transformers@
+-- package. The associated type 'Ref' names each monad's reference type, so one
+-- definition works in all of them:
+--
+-- > counter :: MonadRef m => m Int
+-- > counter = do
+-- >     r <- newRef 0
+-- >     modifyRef' r (+ 1)
+-- >     readRef r
+--
+-- As @counter :: IO Int@ it uses an 'IORef', under @runST@ an 'STRef', and
+-- under @atomically@ a 'TVar'. In a transformer stack such as @StateT s IO@,
+-- 'Ref' is the reference type of the underlying monad.
+--
+-- 'MonadAtomicRef' adds 'atomicModifyRef' for references that several threads
+-- may update. Use it instead of 'readRef' followed by 'writeRef' when another
+-- thread could write between them. Updates in 'ST' are atomic only within a
+-- single thread, as 'MonadAtomicRef' explains.
 
 module Control.Monad.Ref (
     MonadRef(..),
@@ -81,6 +99,9 @@ import qualified Data.STRef.Lazy as Lazy (modifySTRef,
 -- in any monad that supports reference operations.
 
 class (Monad m) => MonadRef m where
+    -- |The type of references in the monad @m@. The instances for monad
+    -- transformers in this module use the reference type of the underlying
+    -- monad.
     type Ref m :: Type -> Type
 
     -- |Create a new reference

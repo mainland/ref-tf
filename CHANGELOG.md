@@ -25,6 +25,9 @@
   supported GHC 8.0+ range. Use HTTPS for the source repository and include
   release documentation in archives.
 - Implement `TVar` updates with `modifyTVar` and `modifyTVar'`.
-- Document `MonadAtomicRef`, including that updates in `ST` are not atomic
-  across threads that share an `STRef` through `stToIO`. Use the current
-  maintainer address in the module header and link the package homepage.
+- Replace the module description, which showed the header's stability and
+  portability fields, with an overview and example, and describe `STM` and the
+  transformer instances in the README and package description. Document
+  `MonadAtomicRef`, including that updates in `ST` are not atomic across
+  threads that share an `STRef` through `stToIO`. Use the current maintainer
+  address in the module header and link the package homepage.
