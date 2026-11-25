@@ -133,11 +133,14 @@ updates = do
     lazy <- atomicModifyRef ref (\x -> (x + 4, x))
     strict <- atomicModifyRef' ref (\x -> (x * 3, x))
     value <- readRef ref
-    return (value, lazy, strict)
+    atomicWriteRef ref (error "unused value")
+    atomicWriteRef ref (value + 1)
+    written <- readRef ref
+    return (written, lazy, strict)
 
 -- | The result of 'updates' when every method works.
 updated :: (Int, Int, Int)
-updated = (30, 6, 10)
+updated = (31, 6, 10)
 
 -- | Check that the strict methods force the value they store and the value
 -- they return, and that the lazy methods force neither. The runner must run

@@ -27,10 +27,10 @@
 -- under @atomically@ a 'TVar'. In a transformer stack such as @StateT s IO@,
 -- 'Ref' is the reference type of the underlying monad.
 --
--- 'MonadAtomicRef' adds 'atomicModifyRef' for references that several threads
--- may update. Use it instead of 'readRef' followed by 'writeRef' when another
--- thread could write between them. Updates in 'ST' are atomic only within a
--- single thread, as 'MonadAtomicRef' explains.
+-- 'MonadAtomicRef' adds 'atomicWriteRef' and 'atomicModifyRef' for references
+-- that several threads may update. Use 'atomicModifyRef' instead of
+-- 'readRef' followed by 'writeRef' when another thread could write between
+-- them. Updates in 'ST' are atomic only within a single thread.
 
 module Control.Monad.Ref (
     MonadRef(..),
@@ -80,6 +80,7 @@ import Data.IORef (IORef,
                    atomicModifyIORef',
                    modifyIORef',
                    atomicModifyIORef,
+                   atomicWriteIORef,
                    modifyIORef,
                    newIORef,
                    readIORef,
@@ -171,6 +172,16 @@ class (Monad m) => MonadRef m where
 -- 'atomicModifyRef'' by lifting to keep the underlying monad's behavior, as
 -- the instances in this module do.
 class (MonadRef m) => MonadAtomicRef m where
+    -- | Atomically replace the value in a reference. This operation leaves
+    -- both the previous and replacement values unevaluated. In 'IO' it
+    -- imposes the memory barrier of 'atomicWriteIORef'. In 'STM' the write
+    -- participates in the enclosing transaction.
+    --
+    -- The default uses 'atomicModifyRef'. A transformer can lift
+    -- 'atomicWriteRef' directly to use the underlying instance's own write.
+    atomicWriteRef :: Ref m a -> a -> m ()
+    atomicWriteRef r x = atomicModifyRef r (const (x, ()))
+
     -- |Atomically mutate the contents of a reference
     atomicModifyRef :: Ref m a -> (a -> (a, b)) -> m b
     default atomicModifyRef
@@ -387,13 +398,16 @@ instance MonadRef m => MonadRef (CPS.WriterT w m) where
 #endif /* MIN_VERSION_transformers(0,5,6) */
 
 instance MonadAtomicRef IO where
-    atomicModifyRef = atomicModifyIORef
+    atomicWriteRef   = atomicWriteIORef
+    atomicModifyRef  = atomicModifyIORef
     atomicModifyRef' = atomicModifyIORef'
 
 -- An ST computation cannot fork, so no other thread can write the reference
 -- between the read and the write. This does not hold for an STRef RealWorld
 -- that threads share through stToIO.
 instance MonadAtomicRef (ST s) where
+    atomicWriteRef = writeRef
+
     atomicModifyRef r f  = do
       v <- readRef r
       let (a, b) = f v
@@ -407,6 +421,8 @@ instance MonadAtomicRef (ST s) where
 
 -- As in strict ST, these updates are atomic only within a single thread.
 instance MonadAtomicRef (Lazy.ST s) where
+    atomicWriteRef = writeRef
+
     atomicModifyRef r f  = do
       v <- readRef r
       let (a, b) = f v
@@ -419,6 +435,8 @@ instance MonadAtomicRef (Lazy.ST s) where
       b `seq` return b
 
 instance MonadAtomicRef STM where
+    atomicWriteRef = writeTVar
+
     atomicModifyRef r f = do x <- readRef r
                              let (x', y) = f x
                              writeRef r x'
@@ -426,80 +444,97 @@ instance MonadAtomicRef STM where
 
 #if MIN_VERSION_transformers(0,5,3)
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (AccumT w m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* MIN_VERSION_transformers(0,5,3) */
 
 instance MonadAtomicRef m => MonadAtomicRef (ContT r m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 #if !MIN_VERSION_transformers(0,6,0)
 instance (Error e, MonadAtomicRef m) => MonadAtomicRef (ErrorT e m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* !MIN_VERSION_transformers(0,6,0) */
 
 instance MonadAtomicRef m => MonadAtomicRef (ExceptT e m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 instance MonadAtomicRef m => MonadAtomicRef (IdentityT m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 #if !MIN_VERSION_transformers(0,6,0)
 instance MonadAtomicRef m => MonadAtomicRef (ListT m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* !MIN_VERSION_transformers(0,6,0) */
 
 instance MonadAtomicRef m => MonadAtomicRef (MaybeT m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 instance MonadAtomicRef m => MonadAtomicRef (ReaderT r m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 #if MIN_VERSION_transformers(0,5,6)
 instance MonadAtomicRef m => MonadAtomicRef (CPS.RWST r w s m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* MIN_VERSION_transformers(0,5,6) */
 
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Lazy.RWST r w s m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Strict.RWST r w s m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 #if MIN_VERSION_transformers(0,5,3)
 instance MonadAtomicRef m => MonadAtomicRef (SelectT r m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* MIN_VERSION_transformers(0,5,3) */
 
 instance MonadAtomicRef m => MonadAtomicRef (Lazy.StateT s m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 instance MonadAtomicRef m => MonadAtomicRef (Strict.StateT s m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Lazy.WriterT w m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (Strict.WriterT w m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 
 #if MIN_VERSION_transformers(0,5,6)
 instance MonadAtomicRef m => MonadAtomicRef (CPS.WriterT w m) where
+    atomicWriteRef   r x = lift $ atomicWriteRef   r x
     atomicModifyRef  r f = lift $ atomicModifyRef  r f
     atomicModifyRef' r f = lift $ atomicModifyRef' r f
 #endif /* MIN_VERSION_transformers(0,5,6) */
