@@ -402,45 +402,37 @@ instance MonadAtomicRef IO where
     atomicModifyRef  = atomicModifyIORef
     atomicModifyRef' = atomicModifyIORef'
 
+readModifyWriteRef :: MonadRef m => Ref m a -> (a -> (a, b)) -> m b
+readModifyWriteRef r f = do
+    x <- readRef r
+    let (x', y) = f x
+    writeRef r x'
+    return y
+
+readModifyWriteRef' :: MonadRef m => Ref m a -> (a -> (a, b)) -> m b
+readModifyWriteRef' r f = do
+    x <- readRef r
+    let (x', y) = f x
+    writeRef r $! x'
+    y `seq` return y
+
 -- An ST computation cannot fork, so no other thread can write the reference
 -- between the read and the write. This does not hold for an STRef RealWorld
 -- that threads share through stToIO.
 instance MonadAtomicRef (ST s) where
-    atomicWriteRef = writeRef
-
-    atomicModifyRef r f  = do
-      v <- readRef r
-      let (a, b) = f v
-      writeRef r a
-      return b
-    atomicModifyRef' r f = do
-      v <- readRef r
-      let (a, b) = f v
-      writeRef r $! a
-      b `seq` return b
+    atomicWriteRef   = writeRef
+    atomicModifyRef  = readModifyWriteRef
+    atomicModifyRef' = readModifyWriteRef'
 
 -- As in strict ST, these updates are atomic only within a single thread.
 instance MonadAtomicRef (Lazy.ST s) where
-    atomicWriteRef = writeRef
-
-    atomicModifyRef r f  = do
-      v <- readRef r
-      let (a, b) = f v
-      writeRef r a
-      return b
-    atomicModifyRef' r f = do
-      v <- readRef r
-      let (a, b) = f v
-      writeRef r $! a
-      b `seq` return b
+    atomicWriteRef   = writeRef
+    atomicModifyRef  = readModifyWriteRef
+    atomicModifyRef' = readModifyWriteRef'
 
 instance MonadAtomicRef STM where
-    atomicWriteRef = writeTVar
-
-    atomicModifyRef r f = do x <- readRef r
-                             let (x', y) = f x
-                             writeRef r x'
-                             return y
+    atomicWriteRef  = writeTVar
+    atomicModifyRef = readModifyWriteRef
 
 #if MIN_VERSION_transformers(0,5,3)
 instance (Monoid w, MonadAtomicRef m) => MonadAtomicRef (AccumT w m) where
