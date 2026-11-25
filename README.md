@@ -4,3 +4,10 @@ Provides the `MonadRef` and `MonadAtomicRef` type classes, which abstract over
 the details of manipulating references, allowing one to write code that can
 operate in the `IO`, `ST`, or `STM` monad, or in a monad transformer from the
 `transformers` package over any of them.
+
+## AI assistance
+
+All contributions included in releases through version `0.5.0.1` were made
+without AI assistance. AI tools were used in development, review, and release
+preparation after that version, through version `0.6.0`. The maintainer remains
+responsible for this release.
