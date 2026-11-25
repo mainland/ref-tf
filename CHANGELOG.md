@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
-- Add a `MonadAtomicRef` instance for `ExceptT`. It lifts both operations and
-  preserves their lazy and strict result behavior.
+- Add `atomicWriteRef` to `MonadAtomicRef`. It replaces the value lazily and
+  gives `IORef` writes the memory barrier of `atomicWriteIORef`. Existing
+  instances get a default through `atomicModifyRef`.
+- Add a `MonadAtomicRef` instance for `ExceptT`. It lifts the atomic
+  operations and preserves their lazy and strict evaluation behavior.
 - Add `MonadRef` and `MonadAtomicRef` instances for lazy and strict `RWST` and
   lazy `ST`, for `AccumT` and `SelectT` with `transformers` 0.5.3 or later, and
   for the CPS `WriterT` and `RWST` with `transformers` 0.5.6 or later.
